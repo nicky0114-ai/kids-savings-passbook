@@ -496,15 +496,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ==================== 記帳送出 (支援指定孩子) ====================
   DOM.formAddTransaction.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const accountId = DOM.txnChildSelect.value || AppState.currentAccountId;
-    const type = DOM.txnType.value;
+    const accountId = (DOM.txnChildSelect && DOM.txnChildSelect.value) ? DOM.txnChildSelect.value : (AppState.currentAccountId || AppState.accounts[0]?.id || 'child_default');
+    const type = DOM.txnType.value || 'deposit';
     const amount = parseFloat(DOM.txnAmount.value);
-    const category = DOM.txnCategory.value.trim();
-    const date = DOM.txnDate.value;
+    const category = DOM.txnCategory.value.trim() || '存款成長基金';
+    const date = DOM.txnDate.value || todayStr;
     const note = DOM.txnNote.value.trim();
 
-    if (!amount || amount <= 0 || !category || !date) {
-      alert("請填寫完整的金額與項目名稱！");
+    if (!amount || isNaN(amount) || amount <= 0) {
+      alert("請輸入大於 0 的正確金額！");
       return;
     }
 
@@ -517,19 +517,36 @@ document.addEventListener('DOMContentLoaded', async () => {
       note
     };
 
-    await FirebaseService.addTransaction(newTxn);
-    
-    DOM.txnAmount.value = '';
-    DOM.txnNote.value = '';
-    DOM.adminModal.classList.remove('active');
+    try {
+      const savedTxn = await FirebaseService.addTransaction(newTxn);
 
-    // 切換到記帳的孩子視圖
-    if (accountId !== AppState.currentAccountId) {
-      switchAccount(accountId);
+      // 立即推入 AppState.transactions
+      const exists = AppState.transactions.some(t => t.id === savedTxn.id);
+      if (!exists) {
+        AppState.transactions.unshift(savedTxn);
+      }
+
+      DOM.txnAmount.value = '';
+      DOM.txnNote.value = '';
+      DOM.adminModal.classList.remove('active');
+
+      // 若記帳對象與目前檢視的不同，自動切換
+      if (accountId !== AppState.currentAccountId) {
+        switchAccount(accountId);
+      } else {
+        renderPassbook();
+        renderStats();
+        renderChildrenManagerList();
+        updateInterestCalculation();
+      }
+
+      SoundEffects.playCoin();
+      if (window.confettiManager) window.confettiManager.shoot(50);
+      alert(`🎉 成功存入 ${amount} 元！已記錄至存摺。`);
+    } catch (err) {
+      console.error("記帳存入失敗:", err);
+      alert("存入失敗：" + err.message);
     }
-
-    SoundEffects.playCoin();
-    if (window.confettiManager) window.confettiManager.shoot(50);
   });
 
   // ==================== 孩子帳戶管理 (CRUD) ====================
@@ -812,11 +829,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       note: periodName
     };
 
-    await FirebaseService.addTransaction(newTxn);
+    const savedTxn = await FirebaseService.addTransaction(newTxn);
+    const exists = AppState.transactions.some(t => t.id === savedTxn.id);
+    if (!exists) {
+      AppState.transactions.unshift(savedTxn);
+    }
+
     DOM.adminModal.classList.remove('active');
     
     if (targetAccountId !== AppState.currentAccountId) {
       switchAccount(targetAccountId);
+    } else {
+      renderPassbook();
+      renderStats();
+      renderChildrenManagerList();
+      updateInterestCalculation();
     }
 
     SoundEffects.playFanfare();
@@ -1152,9 +1179,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   DOM.btnDeleteTxn.addEventListener('click', async () => {
     if (!AppState.selectedTxnForEdit) return;
     if (confirm("確定要刪除這筆交易紀錄嗎？")) {
-      await FirebaseService.deleteTransaction(AppState.selectedTxnForEdit.id);
+      const idToDelete = AppState.selectedTxnForEdit.id;
+      await FirebaseService.deleteTransaction(idToDelete);
+      AppState.transactions = AppState.transactions.filter(t => t.id !== idToDelete);
       DOM.editTxnModal.classList.remove('active');
       AppState.selectedTxnForEdit = null;
+      renderPassbook();
+      renderStats();
+      renderChildrenManagerList();
+      updateInterestCalculation();
     }
   });
 

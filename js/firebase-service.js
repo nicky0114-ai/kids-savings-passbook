@@ -241,27 +241,37 @@ const FirebaseService = {
   async addTransaction(txn) {
     const newTxn = {
       ...txn,
+      id: txn.id || 'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       createdAt: new Date().toISOString()
     };
 
+    // 優先寫入本地快取
+    const local = this.getLocalTransactions();
+    local.unshift(newTxn);
+    localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(local));
+
     if (this.isOnline && this.db) {
-      const docRef = await this.db.collection('transactions').add(newTxn);
-      newTxn.id = docRef.id;
-    } else {
-      newTxn.id = 'loc_' + Date.now();
-      const local = this.getLocalTransactions();
-      local.unshift(newTxn);
-      localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(local));
+      try {
+        const docRef = await this.db.collection('transactions').add(newTxn);
+        newTxn.id = docRef.id;
+      } catch (e) {
+        console.error("雲端存入交易失敗，已保留本地備份:", e);
+      }
     }
     return newTxn;
   },
 
   async deleteTransaction(txnId) {
-    if (this.isOnline && this.db) {
-      await this.db.collection('transactions').doc(txnId).delete();
-    }
     const local = this.getLocalTransactions().filter(t => t.id !== txnId);
     localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(local));
+
+    if (this.isOnline && this.db) {
+      try {
+        await this.db.collection('transactions').doc(txnId).delete();
+      } catch (e) {
+        console.error("雲端刪除交易失敗:", e);
+      }
+    }
   },
 
   // ==================== 願望清單 (GOALS) ====================
