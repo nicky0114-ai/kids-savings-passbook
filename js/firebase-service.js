@@ -29,7 +29,14 @@ const DEFAULT_ACCOUNT = {
  * 如果您希望所有小孩的手機/平板「打開網址就自動連線雲端，不用每台手動貼設定」：
  * 請將 Firebase 控制台複製的 firebaseConfig 貼在下方 EMBEDDED_FIREBASE_CONFIG 中！
  */
-const EMBEDDED_FIREBASE_CONFIG = null;
+const EMBEDDED_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBuzcPUVfWbrLU7_3LwcRuhXalEbDddB-Q",
+  authDomain: "kids-savings-passbook.firebaseapp.com",
+  projectId: "kids-savings-passbook",
+  storageBucket: "kids-savings-passbook.firebasestorage.app",
+  messagingSenderId: "378980300130",
+  appId: "1:378980300130:web:251932368455c2ee8ea83b"
+};
 
 const FirebaseService = {
   db: null,
