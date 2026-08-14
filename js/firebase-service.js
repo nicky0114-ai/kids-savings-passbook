@@ -1,17 +1,20 @@
 /**
- * Firebase Firestore 雲端資料庫服務模組
- * 支援即時同步 (Real-time Sync)、自動備援到 LocalStorage、匯出/匯入
+ * Firebase Firestore 雲端資料庫服務模組 (支援多孩童帳戶管理)
+ * 支援即時同步 (Real-time Sync)、多孩童帳戶切換、自動備援到 LocalStorage、匯出/匯入
  */
 
 const DB_KEYS = {
   FIREBASE_CONFIG: 'kids_passbook_firebase_config',
+  LOCAL_ACCOUNTS: 'kids_passbook_accounts',
   LOCAL_TXNS: 'kids_passbook_txns',
   LOCAL_GOALS: 'kids_passbook_goals',
   LOCAL_SETTINGS: 'kids_passbook_settings'
 };
 
-const DEFAULT_SETTINGS = {
+const DEFAULT_ACCOUNT = {
+  id: 'child_default',
   childName: '小寶貝',
+  avatar: '👦',
   accountNumber: 'SAV-2026-8888',
   passbookTitle: '寶貝的專屬電子存摺',
   currency: 'NT$',
@@ -24,9 +27,9 @@ const DEFAULT_SETTINGS = {
 const FirebaseService = {
   db: null,
   isOnline: false,
+  unsubscribeAccounts: null,
   unsubscribeTxns: null,
   unsubscribeGoals: null,
-  unsubscribeSettings: null,
 
   // 初始化連線
   async init(onStateChange) {
@@ -59,17 +62,14 @@ const FirebaseService = {
     if (!inputStr) throw new Error("設定內容為空");
     let str = inputStr.trim();
 
-    // 取出最外層 { ... } 內容
     const braceMatch = str.match(/\{[\s\S]*\}/);
     if (braceMatch) {
       str = braceMatch[0];
     }
 
-    // 嘗試標準 JSON 解析
     try {
       return JSON.parse(str);
     } catch (e1) {
-      // 嘗試 JS 物件解析 (處理 key 沒有雙引號、單引號字串或結尾逗號等情況)
       try {
         const fn = new Function(`return (${str});`);
         const obj = fn();
@@ -77,7 +77,6 @@ const FirebaseService = {
           return obj;
         }
       } catch (e2) {
-        // Regex 嘗試補上雙引號
         try {
           const formatted = str
             .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":')
@@ -99,8 +98,6 @@ const FirebaseService = {
         throw new Error("缺少必要的 apiKey 或 projectId 欄位，請確認複製的內容是否完整。");
       }
       localStorage.setItem(DB_KEYS.FIREBASE_CONFIG, JSON.stringify(config));
-      
-      // 重新載入以套用新的 Firebase 實例
       window.location.reload();
       return { success: true };
     } catch (err) {
@@ -114,35 +111,99 @@ const FirebaseService = {
     window.location.reload();
   },
 
-  // 取得目前設定
-  async getSettings() {
+  // ==================== 多孩童帳戶 (ACCOUNTS) ====================
+  subscribeAccounts(callback) {
     if (this.isOnline && this.db) {
-      try {
-        const doc = await this.db.collection('settings').doc('general').get();
-        if (doc.exists) {
-          return { ...DEFAULT_SETTINGS, ...doc.data() };
-        }
-      } catch (e) {
-        console.warn("無法從雲端讀取設定，改讀本地:", e);
-      }
+      if (this.unsubscribeAccounts) this.unsubscribeAccounts();
+      this.unsubscribeAccounts = this.db.collection('accounts')
+        .onSnapshot(async (snapshot) => {
+          let accounts = [];
+          snapshot.forEach((doc) => {
+            accounts.push({ id: doc.id, ...doc.data() });
+          });
+
+          // 若雲端尚無任何帳戶，自動將預設帳戶寫入
+          if (accounts.length === 0) {
+            const defaultAcc = this.getLocalAccounts()[0] || DEFAULT_ACCOUNT;
+            await this.db.collection('accounts').doc(defaultAcc.id).set(defaultAcc);
+            accounts = [defaultAcc];
+          }
+
+          localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(accounts));
+          callback(accounts);
+        }, (err) => {
+          console.error("Accounts 監聽失敗，改用本地資料:", err);
+          callback(this.getLocalAccounts());
+        });
+    } else {
+      callback(this.getLocalAccounts());
     }
-    const local = localStorage.getItem(DB_KEYS.LOCAL_SETTINGS);
-    return local ? { ...DEFAULT_SETTINGS, ...JSON.parse(local) } : { ...DEFAULT_SETTINGS };
   },
 
-  // 儲存設定
-  async saveSettings(settings) {
-    localStorage.setItem(DB_KEYS.LOCAL_SETTINGS, JSON.stringify(settings));
-    if (this.isOnline && this.db) {
+  getLocalAccounts() {
+    const local = localStorage.getItem(DB_KEYS.LOCAL_ACCOUNTS);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    // 檢查是否有舊的單一 settings 資料需要遷移
+    const oldSettings = localStorage.getItem(DB_KEYS.LOCAL_SETTINGS);
+    if (oldSettings) {
       try {
-        await this.db.collection('settings').doc('general').set(settings, { merge: true });
-      } catch (e) {
-        console.error("雲端同步設定失敗:", e);
-      }
+        const s = JSON.parse(oldSettings);
+        const migrated = [{
+          id: 'child_default',
+          childName: s.childName || '小寶貝',
+          avatar: '👦',
+          accountNumber: s.accountNumber || 'SAV-2026-8888',
+          passbookTitle: s.passbookTitle || '寶貝的專屬電子存摺',
+          currency: s.currency || 'NT$',
+          parentPin: s.parentPin || '1234',
+          openDate: s.openDate || '2026-01-01',
+          coverImage: s.coverImage || '',
+          annualInterestRate: s.annualInterestRate || 5
+        }];
+        localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(migrated));
+        return migrated;
+      } catch (e) {}
+    }
+    return [DEFAULT_ACCOUNT];
+  },
+
+  async saveAccount(account) {
+    const accToSave = {
+      ...DEFAULT_ACCOUNT,
+      ...account
+    };
+    if (!accToSave.id) {
+      accToSave.id = 'child_' + Date.now();
+    }
+
+    const localAccounts = this.getLocalAccounts();
+    const existingIndex = localAccounts.findIndex(a => a.id === accToSave.id);
+    if (existingIndex >= 0) {
+      localAccounts[existingIndex] = accToSave;
+    } else {
+      localAccounts.push(accToSave);
+    }
+    localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(localAccounts));
+
+    if (this.isOnline && this.db) {
+      await this.db.collection('accounts').doc(accToSave.id).set(accToSave, { merge: true });
+    }
+    return accToSave;
+  },
+
+  async deleteAccount(accountId) {
+    const localAccounts = this.getLocalAccounts().filter(a => a.id !== accountId);
+    localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(localAccounts));
+
+    if (this.isOnline && this.db) {
+      await this.db.collection('accounts').doc(accountId).delete();
     }
   },
 
-  // 監聽即時交易明細
+  // ==================== 交易明細 (TRANSACTIONS) ====================
   subscribeTransactions(callback) {
     if (this.isOnline && this.db) {
       if (this.unsubscribeTxns) this.unsubscribeTxns();
@@ -153,15 +214,13 @@ const FirebaseService = {
           snapshot.forEach((doc) => {
             txns.push({ id: doc.id, ...doc.data() });
           });
-          // 備份一份到本地
           localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(txns));
           callback(txns);
         }, (err) => {
-          console.error("Firestore 監聽失敗，改用本地資料:", err);
+          console.error("Firestore 交易監聽失敗，改用本地資料:", err);
           callback(this.getLocalTransactions());
         });
     } else {
-      // 本地模式
       callback(this.getLocalTransactions());
     }
   },
@@ -171,7 +230,6 @@ const FirebaseService = {
     return local ? JSON.parse(local) : [];
   },
 
-  // 新增交易
   async addTransaction(txn) {
     const newTxn = {
       ...txn,
@@ -190,7 +248,6 @@ const FirebaseService = {
     return newTxn;
   },
 
-  // 刪除交易
   async deleteTransaction(txnId) {
     if (this.isOnline && this.db) {
       await this.db.collection('transactions').doc(txnId).delete();
@@ -199,7 +256,7 @@ const FirebaseService = {
     localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(local));
   },
 
-  // 監聽願望清單
+  // ==================== 願望清單 (GOALS) ====================
   subscribeGoals(callback) {
     if (this.isOnline && this.db) {
       if (this.unsubscribeGoals) this.unsubscribeGoals();
@@ -259,16 +316,16 @@ const FirebaseService = {
     localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(local));
   },
 
-  // 匯出全部資料為 JSON
+  // ==================== 備份與復原 ====================
   async exportFullBackup() {
-    const settings = await this.getSettings();
+    const accounts = this.getLocalAccounts();
     const transactions = this.getLocalTransactions();
     const goals = this.getLocalGoals();
 
     const backupData = {
-      version: '1.0',
+      version: '2.0',
       exportDate: new Date().toISOString(),
-      settings,
+      accounts,
       transactions,
       goals
     };
@@ -277,20 +334,27 @@ const FirebaseService = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `小寶貝成長存摺備份_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `家庭成長電子存摺全部備份_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   },
 
-  // 匯入 JSON 復原
   async importFullBackup(jsonData) {
     try {
-      if (!jsonData.settings && !jsonData.transactions) {
+      if (!jsonData.accounts && !jsonData.transactions) {
         throw new Error("無效的備份檔案格式");
       }
 
-      if (jsonData.settings) {
-        await this.saveSettings(jsonData.settings);
+      if (Array.isArray(jsonData.accounts)) {
+        localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(jsonData.accounts));
+        if (this.isOnline && this.db) {
+          const batch = this.db.batch();
+          jsonData.accounts.forEach(a => {
+            const docRef = this.db.collection('accounts').doc(a.id);
+            batch.set(docRef, a);
+          });
+          await batch.commit();
+        }
       }
 
       if (Array.isArray(jsonData.transactions)) {
@@ -323,21 +387,25 @@ const FirebaseService = {
     }
   },
 
-  // 清除全部
   async resetAll() {
+    localStorage.removeItem(DB_KEYS.LOCAL_ACCOUNTS);
     localStorage.removeItem(DB_KEYS.LOCAL_TXNS);
     localStorage.removeItem(DB_KEYS.LOCAL_GOALS);
     if (this.isOnline && this.db) {
-      // 刪除交易與願望
+      const accs = await this.db.collection('accounts').get();
+      const batchAcc = this.db.batch();
+      accs.forEach(doc => batchAcc.delete(doc.ref));
+      await batchAcc.commit();
+
       const txns = await this.db.collection('transactions').get();
-      const batch1 = this.db.batch();
-      txns.forEach(doc => batch1.delete(doc.ref));
-      await batch1.commit();
+      const batchTxn = this.db.batch();
+      txns.forEach(doc => batchTxn.delete(doc.ref));
+      await batchTxn.commit();
 
       const goals = await this.db.collection('goals').get();
-      const batch2 = this.db.batch();
-      goals.forEach(doc => batch2.delete(doc.ref));
-      await batch2.commit();
+      const batchGoal = this.db.batch();
+      goals.forEach(doc => batchGoal.delete(doc.ref));
+      await batchGoal.commit();
     }
   }
 };
