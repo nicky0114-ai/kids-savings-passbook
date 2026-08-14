@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 願望彈窗
     goalModal: document.getElementById('goalModal'),
     formAddGoal: document.getElementById('formAddGoal'),
+    goalChildSelect: document.getElementById('goalChildSelect'),
     goalTitle: document.getElementById('goalTitle'),
     goalTargetAmount: document.getElementById('goalTargetAmount'),
     goalIcon: document.getElementById('goalIcon'),
@@ -276,6 +277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (DOM.txnChildSelect) DOM.txnChildSelect.innerHTML = optionsHtml;
     if (DOM.interestChildSelect) DOM.interestChildSelect.innerHTML = optionsHtml;
     if (DOM.settingChildSelect) DOM.settingChildSelect.innerHTML = optionsHtml;
+    if (DOM.goalChildSelect) DOM.goalChildSelect.innerHTML = optionsHtml;
 
     syncDropdownSelection(AppState.currentAccountId);
   }
@@ -284,6 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!accountId) return;
     if (DOM.txnChildSelect) DOM.txnChildSelect.value = accountId;
     if (DOM.interestChildSelect) DOM.interestChildSelect.value = accountId;
+    if (DOM.goalChildSelect) DOM.goalChildSelect.value = accountId;
     if (DOM.settingChildSelect) {
       DOM.settingChildSelect.value = accountId;
       loadAccountSettingsToForm(accountId);
@@ -1006,45 +1009,78 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ==================== 願望管理 (Goals - 依孩子區分) ====================
   DOM.btnOpenAddGoal.addEventListener('click', () => {
+    if (DOM.goalChildSelect) {
+      DOM.goalChildSelect.value = AppState.currentAccountId;
+    }
     DOM.goalModal.classList.add('active');
   });
 
   DOM.formAddGoal.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const accountId = (DOM.goalChildSelect && DOM.goalChildSelect.value) ? DOM.goalChildSelect.value : (AppState.currentAccountId || AppState.accounts[0]?.id || 'child_default');
     const title = DOM.goalTitle.value.trim();
     const targetAmount = parseFloat(DOM.goalTargetAmount.value);
     const icon = DOM.goalIcon.value;
     const note = DOM.goalNote.value.trim();
 
-    if (!title || !targetAmount || targetAmount <= 0) {
-      alert("請填寫願望名稱與目標金額！");
+    if (!title || !targetAmount || isNaN(targetAmount) || targetAmount <= 0) {
+      alert("請填寫願望名稱與正確的目標金額！");
       return;
     }
 
-    await FirebaseService.addGoal({
-      accountId: AppState.currentAccountId,
+    const newGoal = {
+      accountId,
       title,
       targetAmount,
       icon,
       note
-    });
+    };
 
-    DOM.goalTitle.value = '';
-    DOM.goalTargetAmount.value = '';
-    DOM.goalNote.value = '';
-    DOM.goalModal.classList.remove('active');
+    try {
+      const savedGoal = await FirebaseService.addGoal(newGoal);
+      AppState.goals.push(savedGoal);
 
-    SoundEffects.playFanfare();
-    if (window.confettiManager) window.confettiManager.shoot(40);
+      DOM.goalTitle.value = '';
+      DOM.goalTargetAmount.value = '';
+      DOM.goalNote.value = '';
+      DOM.goalModal.classList.remove('active');
+
+      // 若為目前選定孩子新增，直接刷新；若為其他孩子新增，自動切換至該孩子
+      if (accountId !== AppState.currentAccountId) {
+        switchAccount(accountId);
+      } else {
+        renderGoals();
+        renderStats();
+      }
+
+      SoundEffects.playFanfare();
+      if (window.confettiManager) window.confettiManager.shoot(40);
+      alert(`🎉 成功為孩子建立儲蓄願望：【${title}】！`);
+    } catch (err) {
+      console.error("建立願望失敗:", err);
+      alert("建立願望失敗：" + err.message);
+    }
   });
 
-  // ==================== 結存與流水計算 ====================
+  // ==================== 結存與流水計算 (嚴格各自獨立) ====================
   function getChildTransactions(accountId = AppState.currentAccountId) {
-    return AppState.transactions.filter(t => !t.accountId || t.accountId === accountId);
+    if (!accountId) return [];
+    const firstAccId = AppState.accounts[0]?.id;
+    return AppState.transactions.filter(t => {
+      if (t.accountId) return t.accountId === accountId;
+      // 舊資料相容：未標註 accountId 的舊紀錄僅歸屬第一位孩子，不重複出現在其他人存摺中
+      return accountId === firstAccId;
+    });
   }
 
   function getChildGoals(accountId = AppState.currentAccountId) {
-    return AppState.goals.filter(g => !g.accountId || g.accountId === accountId);
+    if (!accountId) return [];
+    const firstAccId = AppState.accounts[0]?.id;
+    return AppState.goals.filter(g => {
+      if (g.accountId) return g.accountId === accountId;
+      // 舊資料相容：未標註 accountId 的舊願望僅歸屬第一位孩子，不重複出現在其他人存摺中
+      return accountId === firstAccId;
+    });
   }
 
   function calculateAccountBalance(accountId) {
@@ -1191,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // ==================== 渲染願望目標 ====================
+  // ==================== 渲染願望目標 (各自獨立) ====================
   function renderGoals() {
     const childGoals = getChildGoals(AppState.currentAccountId);
     const totalBalance = calculateAccountBalance(AppState.currentAccountId);
@@ -1201,8 +1237,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       DOM.goalsListGrid.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; color: var(--text-muted);">
           <i class="fa-solid fa-wand-magic-sparkles" style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 10px;"></i>
-          <p style="font-weight: 600;">【${getCurrentAccount().childName}】還沒有設定任何儲蓄願望喔！</p>
-          <p style="font-size: 0.85rem;">點擊右上角「新增願望目標」，一起許下第一個存錢夢想吧！</p>
+          <p style="font-weight: 600;">【${getCurrentAccount().childName}】目前沒有設定願望目標喔！</p>
+          <p style="font-size: 0.85rem;">點擊右上角「新增願望目標」，為【${getCurrentAccount().childName}】許下專屬夢想吧！</p>
         </div>
       `;
       return;
@@ -1249,29 +1285,39 @@ document.addEventListener('DOMContentLoaded', async () => {
               </span>
             ` : ''}
             <button class="btn btn-outline btn-sm btn-delete-goal" data-id="${g.id}" title="刪除此願望" style="margin-left: auto;">
-              <i class="fa-solid fa-trash-can"></i>
+              <i class="fa-solid fa-trash-can"></i> 刪除
             </button>
           </div>
         </div>
       `;
     }).join('');
 
+    // 達成願望按鈕
     DOM.goalsListGrid.querySelectorAll('.btn-achieve-goal').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = btn.dataset.id;
         await FirebaseService.toggleGoalComplete(id, true);
+        const target = AppState.goals.find(g => g.id === id);
+        if (target) target.completed = true;
+        renderGoals();
+        renderStats();
         SoundEffects.playFanfare();
         if (window.confettiManager) window.confettiManager.shoot(80);
       });
     });
 
+    // 刪除願望按鈕 (立即刪除並刷新)
     DOM.goalsListGrid.querySelectorAll('.btn-delete-goal').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const id = btn.dataset.id;
-        if (confirm("確定要刪除這個願望目標嗎？")) {
+        const target = AppState.goals.find(g => g.id === id);
+        if (confirm(`確定要刪除願望「${target ? target.title : '此目標'}」嗎？`)) {
           await FirebaseService.deleteGoal(id);
+          AppState.goals = AppState.goals.filter(g => g.id !== id);
+          renderGoals();
+          renderStats();
         }
       });
     });

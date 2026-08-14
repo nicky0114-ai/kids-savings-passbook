@@ -303,35 +303,51 @@ const FirebaseService = {
   async addGoal(goal) {
     const newGoal = {
       ...goal,
+      id: goal.id || 'goal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       completed: false,
       createdAt: new Date().toISOString()
     };
+
+    // 優先寫入本地快取
+    const local = this.getLocalGoals();
+    local.push(newGoal);
+    localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(local));
+
     if (this.isOnline && this.db) {
-      const docRef = await this.db.collection('goals').add(newGoal);
-      newGoal.id = docRef.id;
-    } else {
-      newGoal.id = 'goal_' + Date.now();
-      const local = this.getLocalGoals();
-      local.push(newGoal);
-      localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(local));
+      try {
+        const docRef = await this.db.collection('goals').add(newGoal);
+        newGoal.id = docRef.id;
+      } catch (e) {
+        console.error("雲端新增願望失敗，已保留本地備份:", e);
+      }
     }
     return newGoal;
   },
 
   async toggleGoalComplete(goalId, completed) {
-    if (this.isOnline && this.db) {
-      await this.db.collection('goals').doc(goalId).update({ completed });
-    }
     const local = this.getLocalGoals().map(g => g.id === goalId ? { ...g, completed } : g);
     localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(local));
+
+    if (this.isOnline && this.db) {
+      try {
+        await this.db.collection('goals').doc(goalId).update({ completed });
+      } catch (e) {
+        console.error("雲端更新願望狀態失敗:", e);
+      }
+    }
   },
 
   async deleteGoal(goalId) {
-    if (this.isOnline && this.db) {
-      await this.db.collection('goals').doc(goalId).delete();
-    }
     const local = this.getLocalGoals().filter(g => g.id !== goalId);
     localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(local));
+
+    if (this.isOnline && this.db) {
+      try {
+        await this.db.collection('goals').doc(goalId).delete();
+      } catch (e) {
+        console.error("雲端刪除願望失敗:", e);
+      }
+    }
   },
 
   // ==================== 備份與復原 ====================
