@@ -476,7 +476,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.querySelectorAll('[data-close-modal]').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      const parentModal = btn.closest('.modal-overlay');
+      if (parentModal) {
+        parentModal.classList.remove('active');
+      } else {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      }
     });
   });
 
@@ -607,9 +612,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const acc = AppState.accounts.find(a => a.id === id);
         if (confirm(`確定要刪除「${acc ? acc.childName : '此孩子'}」的專屬存摺帳戶嗎？`)) {
           await FirebaseService.deleteAccount(id);
+          AppState.accounts = AppState.accounts.filter(a => a.id !== id);
           if (AppState.currentAccountId === id) {
-            AppState.currentAccountId = AppState.accounts.find(a => a.id !== id)?.id || null;
+            AppState.currentAccountId = AppState.accounts[0]?.id || null;
           }
+          renderChildPills();
+          updateChildDropdowns();
+          renderChildrenManagerList();
+          renderCurrentAccountUI();
+          renderPassbook();
+          renderGoals();
+          renderStats();
         }
       });
     });
@@ -622,8 +635,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     DOM.childFormAvatar.value = '👧';
     DOM.childFormAccountNum.value = `SAV-2026-${String(AppState.accounts.length + 1).padStart(4, '0')}`;
     DOM.childFormInitDeposit.value = '0';
+    if (DOM.childFormInitDeposit.parentElement) {
+      DOM.childFormInitDeposit.parentElement.style.display = 'block';
+    }
     DOM.childFormTitle.value = '';
     DOM.btnSubmitChildForm.innerHTML = '<i class="fa-solid fa-check"></i> 建立專屬存摺';
+    DOM.btnSubmitChildForm.disabled = false;
 
     DOM.childModal.classList.add('active');
   }
@@ -635,9 +652,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     DOM.childFormAvatar.value = acc.avatar || '👦';
     DOM.childFormAccountNum.value = acc.accountNumber || '';
     DOM.childFormInitDeposit.value = '0';
-    DOM.childFormInitDeposit.parentElement.style.display = 'none'; // 編輯時隱藏開戶金額
+    if (DOM.childFormInitDeposit.parentElement) {
+      DOM.childFormInitDeposit.parentElement.style.display = 'none'; // 編輯時隱藏開戶金額
+    }
     DOM.childFormTitle.value = acc.passbookTitle || '';
     DOM.btnSubmitChildForm.innerHTML = '<i class="fa-solid fa-check"></i> 儲存修改';
+    DOM.btnSubmitChildForm.disabled = false;
 
     DOM.childModal.classList.add('active');
   }
@@ -656,54 +676,77 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    let accountObj = null;
-    if (id) {
-      // 編輯
-      const existing = AppState.accounts.find(a => a.id === id);
-      accountObj = {
-        ...existing,
-        childName: name,
-        avatar,
-        accountNumber: accountNum,
-        passbookTitle: title
-      };
-      await FirebaseService.saveAccount(accountObj);
-    } else {
-      // 新增
-      const newAccId = 'child_' + Date.now();
-      accountObj = {
-        id: newAccId,
-        childName: name,
-        avatar,
-        accountNumber: accountNum,
-        passbookTitle: title,
-        currency: 'NT$',
-        parentPin: '1234',
-        openDate: todayStr,
-        coverImage: '',
-        annualInterestRate: 5
-      };
-      await FirebaseService.saveAccount(accountObj);
+    DOM.btnSubmitChildForm.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 儲存中...';
+    DOM.btnSubmitChildForm.disabled = true;
 
-      // 若有開戶金額，自動寫入一筆開戶存款
-      if (initDeposit > 0) {
-        await FirebaseService.addTransaction({
-          accountId: newAccId,
-          type: 'deposit',
-          amount: initDeposit,
-          category: '開戶成長基金',
-          date: todayStr,
-          note: '開戶存入的第一筆夢想種子 🌱'
-        });
+    try {
+      let accountObj = null;
+      if (id) {
+        // 編輯
+        const existing = AppState.accounts.find(a => a.id === id);
+        accountObj = {
+          ...existing,
+          childName: name,
+          avatar,
+          accountNumber: accountNum,
+          passbookTitle: title
+        };
+        const saved = await FirebaseService.saveAccount(accountObj);
+        const idx = AppState.accounts.findIndex(a => a.id === id);
+        if (idx >= 0) AppState.accounts[idx] = saved;
+      } else {
+        // 新增
+        const newAccId = 'child_' + Date.now();
+        accountObj = {
+          id: newAccId,
+          childName: name,
+          avatar,
+          accountNumber: accountNum,
+          passbookTitle: title,
+          currency: 'NT$',
+          parentPin: '1234',
+          openDate: todayStr,
+          coverImage: '',
+          annualInterestRate: 5
+        };
+        const saved = await FirebaseService.saveAccount(accountObj);
+        AppState.accounts.push(saved);
+
+        // 若有開戶金額，寫入開戶存款
+        if (initDeposit > 0) {
+          await FirebaseService.addTransaction({
+            accountId: newAccId,
+            type: 'deposit',
+            amount: initDeposit,
+            category: '開戶成長基金',
+            date: todayStr,
+            note: '開戶存入的第一筆夢想種子 🌱'
+          });
+        }
+
+        AppState.currentAccountId = newAccId;
       }
 
-      AppState.currentAccountId = newAccId;
-    }
+      // 立即刷新所有畫面元件
+      renderChildPills();
+      updateChildDropdowns();
+      renderChildrenManagerList();
+      renderCurrentAccountUI();
+      renderPassbook();
+      renderGoals();
+      renderStats();
+      updateInterestCalculation();
 
-    DOM.childModal.classList.remove('active');
-    SoundEffects.playFanfare();
-    if (window.confettiManager) window.confettiManager.shoot(60);
-    alert(`🎉 恭喜！「${name}」的專屬存摺已建立完成！`);
+      DOM.childModal.classList.remove('active');
+      SoundEffects.playFanfare();
+      if (window.confettiManager) window.confettiManager.shoot(60);
+      alert(`🎉 恭喜！「${name}」的專屬存摺已建立完成！`);
+    } catch (err) {
+      console.error("建立孩子存摺失敗:", err);
+      alert("儲存失敗：" + err.message);
+    } finally {
+      DOM.btnSubmitChildForm.disabled = false;
+    }
   });
 
   // ==================== 發放年利息 (支援指定孩子) ====================

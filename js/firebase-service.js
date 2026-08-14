@@ -189,7 +189,11 @@ const FirebaseService = {
     localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(localAccounts));
 
     if (this.isOnline && this.db) {
-      await this.db.collection('accounts').doc(accToSave.id).set(accToSave, { merge: true });
+      try {
+        await this.db.collection('accounts').doc(accToSave.id).set(accToSave, { merge: true });
+      } catch (e) {
+        console.error("雲端儲存帳戶失敗，已保留本地備份:", e);
+      }
     }
     return accToSave;
   },
@@ -199,7 +203,11 @@ const FirebaseService = {
     localStorage.setItem(DB_KEYS.LOCAL_ACCOUNTS, JSON.stringify(localAccounts));
 
     if (this.isOnline && this.db) {
-      await this.db.collection('accounts').doc(accountId).delete();
+      try {
+        await this.db.collection('accounts').doc(accountId).delete();
+      } catch (e) {
+        console.error("雲端刪除帳戶失敗:", e);
+      }
     }
   },
 

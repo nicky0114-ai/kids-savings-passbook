@@ -996,6 +996,18 @@ body {
   animation: modalFadeIn 0.2s ease;
 }
 
+#adminModal {
+  z-index: 1000;
+}
+
+#childModal, #goalModal, #editTxnModal {
+  z-index: 1100;
+}
+
+#pinModal {
+  z-index: 1200;
+}
+
 .modal-overlay.active {
   display: flex;
 }
