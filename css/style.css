@@ -1,0 +1,1312 @@
+/* ==========================================================================
+   我的專屬成長電子存摺 (Kids Digital Passbook) - 主樣式表
+   ========================================================================== */
+
+:root {
+  /* 主題色彩體系 */
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #eff6ff;
+  
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-light: #fef3c7;
+
+  --success: #10b981;
+  --success-dark: #059669;
+  --success-light: #ecfdf5;
+
+  --danger: #ef4444;
+  --danger-light: #fef2f2;
+
+  --purple: #8b5cf6;
+  --purple-light: #f5f3ff;
+
+  /* 存摺專屬色彩 (典雅米白紙質與皮革感) */
+  --passbook-bg: #fffdfa;
+  --passbook-paper: #fcfbf7;
+  --passbook-line: #e2ded4;
+  --passbook-grid: #ece8df;
+  --passbook-spine: #cbd5e1;
+  --stamp-red: #dc2626;
+
+  /* 文字與中性色 */
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --text-light: #94a3b8;
+  --border-color: #e2e8f0;
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+
+  /* 圓角與陰影 */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --shadow-passbook: 0 18px 45px rgba(30, 41, 59, 0.12), 0 2px 6px rgba(0,0,0,0.04);
+
+  /* 字體 */
+  --font-main: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Fredoka', 'Noto Sans TC', sans-serif;
+  --font-mono: 'Space Grotesk', monospace;
+}
+
+/* 基本重置 */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==================== 頂部導航列 (HEADER) ==================== */
+.app-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.logo-area {
+  display: flex;
+  flex-direction: column;
+}
+
+.bank-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 2px 10px;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  margin-bottom: 3px;
+}
+
+.bank-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sync-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 50px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sync-status-badge .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  transition: background-color 0.3s;
+}
+
+.sync-status-badge.online .status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.sync-status-badge.online {
+  background: var(--success-light);
+  color: var(--success-dark);
+}
+
+/* ==================== 頁籤切換 (TABS) ==================== */
+.passbook-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px auto 10px;
+  max-width: 600px;
+  background: #e2e8f0;
+  padding: 5px;
+  border-radius: 50px;
+}
+
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 50px;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== 主內容容器 ==================== */
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 20px 40px;
+  flex: 1;
+  width: 100%;
+}
+
+/* ==================== 存摺主體 (PASSBOOK BOOKLET) ==================== */
+.passbook-wrapper {
+  margin-top: 15px;
+}
+
+.passbook-booklet {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  background: var(--passbook-bg);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--passbook-line);
+  box-shadow: var(--shadow-passbook);
+  overflow: hidden;
+  position: relative;
+  min-height: 580px;
+}
+
+/* 存摺中脊線視覺效果 */
+.passbook-booklet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 360px;
+  width: 12px;
+  background: linear-gradient(to right, rgba(0,0,0,0.06), rgba(0,0,0,0.01) 40%, rgba(255,255,255,0.4) 60%, rgba(0,0,0,0.05));
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* 左側封面面板 */
+.passbook-cover-panel {
+  background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%);
+  padding: 24px 20px;
+  border-right: 1px solid var(--passbook-line);
+  display: flex;
+  flex-direction: column;
+}
+
+.cover-card-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 16px;
+}
+
+.cover-image-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cover-img:not([src]), .cover-img[src=""] {
+  display: none;
+}
+
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 15px;
+  background: linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%);
+}
+
+.default-cover-design .default-emblem {
+  font-size: 2.4rem;
+  margin-bottom: 4px;
+}
+
+.default-cover-design .default-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.default-cover-design .default-sub {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #6366f1;
+  margin-bottom: 6px;
+}
+
+.default-cover-design .default-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.cover-gold-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(254, 243, 199, 0.95);
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 50px;
+  border: 1px solid #fde68a;
+  backdrop-filter: blur(4px);
+}
+
+/* 帳戶資訊卡 */
+.account-meta-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  border-bottom: 1px dashed #f1f5f9;
+  padding-bottom: 4px;
+}
+
+.meta-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.meta-val {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.meta-val.holder-name {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+.meta-val.account-number {
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+/* 總資產金額展示塊 */
+.balance-display-block {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  color: #ffffff;
+  margin-top: 6px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+}
+
+.balance-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.balance-amount-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.currency-symbol {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #38bdf8;
+}
+
+.balance-number {
+  font-family: var(--font-mono);
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -1px;
+}
+
+.balance-encouragement {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  margin-top: 6px;
+  line-height: 1.4;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 6px;
+}
+
+.cover-action-btns {
+  margin-top: 10px;
+}
+
+/* ==================== 存摺內頁流水帳 (INNER PAPER) ==================== */
+.passbook-inner-panel {
+  background-color: var(--passbook-paper);
+  /* 擬真橫紋紙質背景線條 */
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 39px,
+    var(--passbook-grid) 40px
+  );
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.inner-paper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--text-main);
+  margin-bottom: 12px;
+}
+
+.paper-title-group h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paper-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.passbook-table-container {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 480px;
+  padding-right: 4px;
+}
+
+/* 擬真存摺表格排版 */
+.passbook-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.passbook-table th {
+  background: rgba(241, 245, 249, 0.7);
+  padding: 10px 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--passbook-line);
+  letter-spacing: 0.5px;
+}
+
+.passbook-table td {
+  padding: 12px 8px;
+  border-bottom: 1px dashed var(--passbook-line);
+  vertical-align: middle;
+}
+
+.passbook-table tr:hover td {
+  background: rgba(254, 243, 199, 0.25);
+  cursor: pointer;
+}
+
+.txn-date {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.txn-cat {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.txn-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.txn-amount-in {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--success-dark);
+  text-align: right;
+}
+
+.txn-amount-out {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--danger);
+  text-align: right;
+}
+
+.txn-balance {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-main);
+  text-align: right;
+}
+
+.empty-table-state {
+  text-align: center;
+  padding: 60px 20px !important;
+}
+
+.empty-box i {
+  font-size: 3rem;
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.empty-box p {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.empty-box small {
+  color: var(--text-light);
+}
+
+/* 存摺底部署名與紅印章 */
+.passbook-paper-footer {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid var(--passbook-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 擬真紅印章 (Stamp) */
+.bank-stamp .stamp-circle {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border: 2px solid var(--stamp-red);
+  border-radius: 50%;
+  color: var(--stamp-red);
+  font-weight: 900;
+  font-size: 0.65rem;
+  line-height: 1.1;
+  transform: rotate(-12deg);
+  opacity: 0.85;
+  box-shadow: inset 0 0 0 1px var(--stamp-red);
+  user-select: none;
+}
+
+.bank-stamp .stamp-core {
+  font-size: 1rem;
+  letter-spacing: 2px;
+  margin: 1px 0;
+}
+
+.bank-stamp .stamp-date {
+  font-size: 0.58rem;
+  font-family: var(--font-mono);
+}
+
+/* ==================== 頁籤二：願望存錢筒 (GOALS) ==================== */
+.goals-container {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.goals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 15px;
+}
+
+.goals-header h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.section-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.goal-card {
+  background: #f8fafc;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+
+.goal-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: #cbd5e1;
+}
+
+.goal-card.completed {
+  border-color: var(--success);
+  background: var(--success-light);
+}
+
+.goal-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.goal-icon-badge {
+  font-size: 2rem;
+  background: #ffffff;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.goal-meta {
+  flex: 1;
+}
+
+.goal-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.goal-amount {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.goal-progress-wrap {
+  margin: 12px 0;
+}
+
+.progress-bar-bg {
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 50px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  border-radius: 50px;
+  transition: width 0.5s ease;
+}
+
+.goal-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-top: 6px;
+  color: var(--text-muted);
+}
+
+.goal-actions {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+/* ==================== 頁籤三：成長統計 (STATS) ==================== */
+.stats-container {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.stats-container h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.stats-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.stat-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.icon-green { background: var(--success-light); color: var(--success); }
+.icon-orange { background: var(--danger-light); color: var(--danger); }
+.icon-purple { background: var(--purple-light); color: var(--purple); }
+.icon-blue { background: var(--primary-light); color: var(--primary); }
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.stats-breakdown-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.category-bar-item {
+  margin-bottom: 14px;
+}
+
+.category-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.category-bar-track {
+  height: 10px;
+  background: #f1f5f9;
+  border-radius: 50px;
+  overflow: hidden;
+}
+
+.category-bar-progress {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 50px;
+}
+
+/* ==================== 通用按鈕與表單 ==================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 0.92rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-decoration: none;
+}
+
+.btn-sm { padding: 5px 10px; font-size: 0.82rem; }
+.btn-lg { padding: 13px 24px; font-size: 1.05rem; }
+.btn-block { width: 100%; }
+
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+}
+.btn-primary:hover { background: var(--primary-dark); }
+
+.btn-accent {
+  background: var(--accent);
+  color: #ffffff;
+}
+.btn-accent:hover { background: var(--accent-hover); }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+.btn-outline:hover { background: #f1f5f9; }
+
+.btn-danger {
+  background: var(--danger);
+  color: #ffffff;
+}
+.btn-danger:hover { background: #dc2626; }
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.form-control, .form-select-sm {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+  background: #ffffff;
+}
+
+.form-control:focus, .form-select-sm:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.form-select-sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.code-textarea {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  background: #f8fafc;
+}
+
+.app-form .form-group {
+  margin-bottom: 16px;
+}
+
+.app-form label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.app-form .req {
+  color: var(--danger);
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 20px 0;
+}
+
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: block;
+}
+
+/* 常用標籤按鈕組 */
+.quick-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tag-btn {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 5px 11px;
+  border-radius: 50px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tag-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: #bfdbfe;
+}
+
+/* ==================== 彈窗系統 (MODALS) ==================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  max-width: 520px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-modal-card {
+  max-width: 780px;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.text-center { text-align: center; }
+
+/* PIN 碼鍵盤專用樣式 */
+.pin-instruction {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.pin-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  transition: all 0.2s;
+}
+
+.pin-dot.filled {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.15);
+}
+
+.pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 280px;
+  margin: 0 auto 16px;
+}
+
+.keypad-btn {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keypad-btn:active {
+  background: var(--primary-light);
+  transform: scale(0.94);
+}
+
+.keypad-clear { font-size: 0.9rem; font-family: var(--font-main); font-weight: 600; }
+.keypad-backspace { font-size: 1.1rem; }
+
+.pin-hint { font-size: 0.8rem; color: var(--text-light); }
+.error-msg { color: var(--danger); font-size: 0.85rem; font-weight: 600; margin-top: 10px; }
+
+/* 後台分頁選單 */
+.admin-nav-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.admin-nav-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.admin-nav-btn.active {
+  color: var(--primary);
+  background: var(--primary-light);
+  border-bottom: 2px solid var(--primary);
+}
+
+.admin-tab-pane {
+  display: none;
+}
+
+.admin-tab-pane.active {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+/* 封面設定上傳塊 */
+.cover-uploader-block {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-color);
+}
+
+.cover-preview-mini {
+  width: 110px;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+}
+
+.uploader-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.75rem;
+}
+.or-divider::before, .or-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border-color);
+}
+.or-divider span { padding: 0 8px; }
+
+/* 利息試算盒 */
+.interest-calculator-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.calc-preview-box {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+/* 備份按鈕網格 */
+.backup-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 15px;
+}
+
+.backup-action-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+}
+
+.icon-lg { font-size: 2rem; margin-bottom: 8px; }
+
+.danger-zone {
+  background: var(--danger-light);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+/* ==================== 撒花 CANVAS ==================== */
+.confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ==================== 頁腳 (FOOTER) ==================== */
+.app-footer {
+  background: #ffffff;
+  border-top: 1px solid var(--border-color);
+  padding: 20px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: auto;
+}
+
+.footer-copy {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+
+/* ==================== 響應式斷點 (RESPONSIVE DESIGN) ==================== */
+@media (max-width: 900px) {
+  .passbook-booklet {
+    grid-template-columns: 1fr;
+  }
+
+  .passbook-booklet::before {
+    display: none;
+  }
+
+  .passbook-cover-panel {
+    border-right: none;
+    border-bottom: 2px dashed var(--passbook-line);
+  }
+
+  .backup-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    justify-content: space-between;
+  }
+
+  .form-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .passbook-table th:nth-child(3),
+  .passbook-table td:nth-child(3) {
+    display: none; /* 小螢幕隱藏備註欄位，保持金額清晰 */
+  }
+}

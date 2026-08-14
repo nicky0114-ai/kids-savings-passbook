@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的專屬成長電子存摺 | Kids Digital Passbook</title>
+  <meta name="description" content="專為孩子設計的家庭雲端電子存摺，記錄存款、利息、零用錢與儲蓄願望，養成好習慣！">
+
+  <!-- Google Fonts: 活潑清晰字型與數字等寬字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 圖標 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- 主樣式表 -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Firebase SDK (v10 modular loaded via CDN script tags) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- 頂部導航列 -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-area">
+        <span class="bank-badge"><i class="fa-solid fa-piggy-bank"></i> 家庭成長銀行</span>
+        <h1 class="bank-title" id="displayHeaderTitle">寶貝的專屬電子存摺</h1>
+      </div>
+
+      <div class="header-actions">
+        <!-- 雲端同步狀態燈 -->
+        <div class="sync-status-badge" id="syncStatusBadge" title="雲端資料庫狀態">
+          <span class="status-dot"></span>
+          <span class="status-text" id="syncStatusText">本地模式</span>
+        </div>
+
+        <!-- 視圖切換與家長後台按鈕 -->
+        <button class="btn btn-outline" id="btnToggleSound" title="開關音效">
+          <i class="fa-solid fa-volume-high" id="soundIcon"></i>
+        </button>
+
+        <button class="btn btn-primary" id="btnParentAdmin">
+          <i class="fa-solid fa-lock"></i> <span id="adminBtnLabel">家長記帳與管理</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="main-container">
+
+    <!-- 頂部快速切換頁籤 -->
+    <nav class="passbook-tabs">
+      <button class="tab-btn active" data-tab="passbook">
+        <i class="fa-solid fa-book-open"></i> 存摺明細
+      </button>
+      <button class="tab-btn" data-tab="goals">
+        <i class="fa-solid fa-bullseye"></i> 願望存錢筒 (<span id="goalsCountBadge">0</span>)
+      </button>
+      <button class="tab-btn" data-tab="stats">
+        <i class="fa-solid fa-chart-line"></i> 成長統計
+      </button>
+    </nav>
+
+    <!-- 頁籤一：存摺主體 (Passbook View) -->
+    <section class="tab-content active" id="tabPassbook">
+      
+      <div class="passbook-wrapper">
+        
+        <!-- 存摺卡片容器 (擬真存摺視覺) -->
+        <div class="passbook-booklet">
+          
+          <!-- 左側 / 上半部：存摺封面與帳戶卡 -->
+          <div class="passbook-cover-panel">
+            <div class="cover-card-container">
+              <!-- 自訂 Canva 封面圖片展示區 -->
+              <div class="cover-image-box" id="coverImageBox">
+                <img id="passbookCoverImg" src="" alt="存摺自訂封面" class="cover-img">
+                <div class="cover-placeholder" id="coverPlaceholder">
+                  <div class="default-cover-design">
+                    <div class="default-emblem">🌟</div>
+                    <div class="default-title" id="defaultCoverTitle">夢想成長存摺</div>
+                    <div class="default-sub">KIDS SAVINGS PASSBOOK</div>
+                    <div class="default-hint">（可在「家長管理」換上 Canva 設計的專屬封面）</div>
+                  </div>
+                </div>
+                <div class="cover-gold-badge">
+                  <i class="fa-solid fa-award"></i> VIP 專屬儲蓄帳戶
+                </div>
+              </div>
+
+              <!-- 帳戶重要摘要資訊 -->
+              <div class="account-meta-card">
+                <div class="meta-row">
+                  <span class="meta-label">戶名：</span>
+                  <span class="meta-val holder-name" id="displayChildName">親愛的小寶貝</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">帳號：</span>
+                  <span class="meta-val account-number" id="displayAccountNumber">SAV-2026-8888</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">開戶日期：</span>
+                  <span class="meta-val" id="displayAccountOpenDate">2026-01-01</span>
+                </div>
+
+                <!-- 總資產大字顯示 -->
+                <div class="balance-display-block">
+                  <div class="balance-label">
+                    <span>目前結存總金額</span>
+                    <button class="btn-icon" id="btnToggleBalanceMask" title="隱藏/顯示金額">
+                      <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                    </button>
+                  </div>
+                  <div class="balance-amount-wrapper">
+                    <span class="currency-symbol" id="displayCurrency">NT$</span>
+                    <span class="balance-number" id="displayTotalBalance">0</span>
+                  </div>
+                  <div class="balance-encouragement" id="displayEncouragement">
+                    🌱 每一枚小銅板，都在為未來的夢想施肥！
+                  </div>
+                </div>
+
+                <!-- 快捷家長記帳按鈕（僅在解鎖或點擊時引導） -->
+                <div class="cover-action-btns">
+                  <button class="btn btn-accent btn-block" id="btnQuickAddDeposit">
+                    <i class="fa-solid fa-circle-plus"></i> 家長存入 / 獎勵
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側 / 下半部：存摺內頁流水帳 (Transaction Paper) -->
+          <div class="passbook-inner-panel">
+            <div class="inner-paper-header">
+              <div class="paper-title-group">
+                <h3><i class="fa-solid fa-receipt"></i> 存摺明細流水帳</h3>
+                <span class="paper-sub" id="displayTxnCount">共 0 筆交易</span>
+              </div>
+              <div class="paper-actions">
+                <select id="filterTxnCategory" class="form-select-sm">
+                  <option value="all">全部類別</option>
+                  <option value="deposit">💰 存入 / 零用錢</option>
+                  <option value="reward">🌟 獎勵 / 做家事</option>
+                  <option value="interest">📈 銀行利息</option>
+                  <option value="withdraw">🛒 提領 / 支出</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 擬真存摺表格 -->
+            <div class="passbook-table-container">
+              <table class="passbook-table" id="txnTable">
+                <thead>
+                  <tr>
+                    <th style="width: 15%;">日期</th>
+                    <th style="width: 18%;">摘要項目</th>
+                    <th style="width: 25%;">備註說明</th>
+                    <th style="width: 14%; text-align: right;">存入(+)</th>
+                    <th style="width: 14%; text-align: right;">支出(-)</th>
+                    <th style="width: 14%; text-align: right;">結存餘額</th>
+                  </tr>
+                </thead>
+                <tbody id="txnTableBody">
+                  <!-- 動態注入明細項目 -->
+                  <tr>
+                    <td colspan="6" class="empty-table-state">
+                      <div class="empty-box">
+                        <i class="fa-solid fa-feather-pointed"></i>
+                        <p>目前還沒有任何存款紀錄喔！</p>
+                        <small>點擊「家長記帳」存入第一筆成長基金吧 ✨</small>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 存摺底部防偽印章與註記 -->
+            <div class="passbook-paper-footer">
+              <div class="footer-note">
+                <i class="fa-solid fa-shield-halved"></i> 本存摺資料由雲端即時保護，每一筆儲蓄都是成長的足跡
+              </div>
+              <div class="bank-stamp">
+                <span class="stamp-circle">
+                  <span>家庭成長</span>
+                  <span class="stamp-core">核定</span>
+                  <span class="stamp-date" id="currentStampDate">2026.08</span>
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- 頁籤二：願望存錢筒 (Goals View) -->
+    <section class="tab-content" id="tabGoals">
+      <div class="goals-container">
+        <div class="goals-header">
+          <div>
+            <h2><i class="fa-solid fa-wand-magic-sparkles"></i> 寶貝的願望存錢目標</h2>
+            <p class="section-sub">設定心願清單，看著存錢進度條一天天填滿，超有成就感！</p>
+          </div>
+          <button class="btn btn-primary" id="btnOpenAddGoal">
+            <i class="fa-solid fa-plus"></i> 新增願望目標
+          </button>
+        </div>
+
+        <div class="goals-grid" id="goalsListGrid">
+          <!-- 動態載入願望卡片 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 頁籤三：成長統計與分析 (Stats View) -->
+    <section class="tab-content" id="tabStats">
+      <div class="stats-container">
+        <h2><i class="fa-solid fa-chart-pie"></i> 儲蓄成長與財務足跡</h2>
+        <p class="section-sub">透過圖表與數據，讓孩子看懂自己的儲蓄力量！</p>
+
+        <div class="stats-cards-row">
+          <div class="stat-card">
+            <div class="stat-icon icon-green"><i class="fa-solid fa-wallet"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">累積存入總額</span>
+              <span class="stat-value" id="statTotalDeposits">NT$ 0</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon icon-orange"><i class="fa-solid fa-bag-shopping"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">累積支出總額</span>
+              <span class="stat-value" id="statTotalWithdraws">NT$ 0</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon icon-purple"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">賺取利息與獎勵</span>
+              <span class="stat-value" id="statTotalRewards">NT$ 0</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon icon-blue"><i class="fa-solid fa-trophy"></i></div>
+            <div class="stat-info">
+              <span class="stat-label">已實現願望</span>
+              <span class="stat-value" id="statCompletedGoals">0 個</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 儲蓄類別佔比與成長歷程 -->
+        <div class="stats-breakdown-card">
+          <h3><i class="fa-solid fa-list-check"></i> 收入來源分布</h3>
+          <div class="category-bars" id="categoryBars">
+            <!-- 動態生成分類長條圖 -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== 彈窗區域 (MODALS) ==================== -->
+
+  <!-- 1. 家長 PIN 碼驗證彈窗 -->
+  <div class="modal-overlay" id="pinModal">
+    <div class="modal-card pin-modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-key"></i> 家長管理驗證</h3>
+        <button class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="pin-instruction">請輸入 4 位數家長管理密碼：</p>
+        <div class="pin-dots" id="pinDotsDisplay">
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+          <span class="pin-dot"></span>
+        </div>
+        <div class="pin-keypad">
+          <button class="keypad-btn" data-key="1">1</button>
+          <button class="keypad-btn" data-key="2">2</button>
+          <button class="keypad-btn" data-key="3">3</button>
+          <button class="keypad-btn" data-key="4">4</button>
+          <button class="keypad-btn" data-key="5">5</button>
+          <button class="keypad-btn" data-key="6">6</button>
+          <button class="keypad-btn" data-key="7">7</button>
+          <button class="keypad-btn" data-key="8">8</button>
+          <button class="keypad-btn" data-key="9">9</button>
+          <button class="keypad-btn keypad-clear" id="btnPinClear">清除</button>
+          <button class="keypad-btn" data-key="0">0</button>
+          <button class="keypad-btn keypad-backspace" id="btnPinBackspace"><i class="fa-solid fa-delete-left"></i></button>
+        </div>
+        <p class="pin-hint">（預設管理密碼為 <code>1234</code>，可在設定中修改）</p>
+        <div class="error-msg" id="pinErrorMsg" style="display: none;">密碼錯誤，請再試一次！</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 家長管理後台主彈窗 -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal-card admin-modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-user-shield"></i> 家長管理與設定中心</h3>
+        <button class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- 後台功能分頁 -->
+        <div class="admin-nav-tabs">
+          <button class="admin-nav-btn active" data-admin-tab="record">
+            <i class="fa-solid fa-pen-to-square"></i> 快速記帳
+          </button>
+          <button class="admin-nav-btn" data-admin-tab="interest">
+            <i class="fa-solid fa-hand-holding-dollar"></i> 發放利息/獎勵
+          </button>
+          <button class="admin-nav-btn" data-admin-tab="passbook-settings">
+            <i class="fa-solid fa-palette"></i> Canva 封面與存摺設定
+          </button>
+          <button class="admin-nav-btn" data-admin-tab="firebase-settings">
+            <i class="fa-solid fa-cloud"></i> Firebase 雲端資料庫
+          </button>
+          <button class="admin-nav-btn" data-admin-tab="backup">
+            <i class="fa-solid fa-floppy-disk"></i> 備份與安全
+          </button>
+        </div>
+
+        <!-- 2.1 快速記帳面板 -->
+        <div class="admin-tab-pane active" id="adminPaneRecord">
+          <form id="formAddTransaction" class="app-form">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="txnType">交易類型 <span class="req">*</span></label>
+                <select id="txnType" class="form-control" required>
+                  <option value="deposit">💰 存入 (+)</option>
+                  <option value="reward">🌟 獎勵 / 家事紅利 (+)</option>
+                  <option value="interest">📈 儲蓄利息 (+)</option>
+                  <option value="withdraw">🛒 支出 / 提領 (-)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="txnAmount">金額 (NT$) <span class="req">*</span></label>
+                <input type="number" id="txnAmount" class="form-control" placeholder="例如：100" min="1" step="1" required>
+              </div>
+            </div>
+
+            <!-- 快捷常用摘要標籤 -->
+            <div class="form-group">
+              <label>常用項目快捷選擇：</label>
+              <div class="quick-tags-container" id="quickCategoryTags">
+                <button type="button" class="tag-btn" data-cat="零用錢" data-type="deposit">🧧 零用錢</button>
+                <button type="button" class="tag-btn" data-cat="壓歲錢" data-type="deposit">🧧 壓歲錢</button>
+                <button type="button" class="tag-btn" data-cat="幫忙洗碗做家事" data-type="reward">🧼 做家事獎勵</button>
+                <button type="button" class="tag-btn" data-cat="考試好成績獎勵" data-type="reward">💯 好成績獎勵</button>
+                <button type="button" class="tag-btn" data-cat="自動自發好表現" data-type="reward">⭐ 好習慣獎勵</button>
+                <button type="button" class="tag-btn" data-cat="買文具書籍" data-type="withdraw">✏️ 買文具/書籍</button>
+                <button type="button" class="tag-btn" data-cat="購買心願玩具" data-type="withdraw">🧸 實現願望</button>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="txnCategory">項目摘要 <span class="req">*</span></label>
+                <input type="text" id="txnCategory" class="form-control" placeholder="例如：零用錢、做家事獎勵" required>
+              </div>
+
+              <div class="form-group">
+                <label for="txnDate">交易日期 <span class="req">*</span></label>
+                <input type="date" id="txnDate" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="txnNote">備註說明 (會印在存摺上給孩子看喔)</label>
+              <input type="text" id="txnNote" class="form-control" placeholder="例如：今天主動把玩具收整齊，超棒！">
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-accent btn-lg btn-block">
+                <i class="fa-solid fa-stamp"></i> 蓋章存入並同步至雲端
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 2.2 發放利息與獎勵面板 -->
+        <div class="admin-tab-pane" id="adminPaneInterest">
+          <div class="interest-calculator-box">
+            <h4><i class="fa-solid fa-calculator"></i> 爸媽小銀行利息試算與發放 (年利率制)</h4>
+            <p class="text-muted">設定「年利率 (Annual Interest Rate)」，可選擇按月結算或按年發放，讓孩子體會儲蓄利息的複利魅力！</p>
+
+            <div class="form-row-2" style="margin-top: 15px;">
+              <div class="form-group">
+                <label for="interestRate">年利率設定 (%) <span class="req">*</span></label>
+                <input type="number" id="interestRate" class="form-control" value="5" min="0.1" max="100" step="0.1">
+                <small class="form-hint">例如設定年利率 5% 或 10%（可隨時調整）</small>
+              </div>
+
+              <div class="form-group">
+                <label for="interestPeriod">發放結算週期</label>
+                <select id="interestPeriod" class="form-control">
+                  <option value="monthly" selected>📅 按月發放 (年利率 ÷ 12)</option>
+                  <option value="yearly">🌟 按年發放 (全額年利率)</option>
+                </select>
+                <small class="form-hint">建議「按月發放」，讓孩子每月有感領利息！</small>
+              </div>
+            </div>
+
+            <div class="calc-preview-box" style="margin-bottom: 15px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>目前結存總額：</span>
+                <strong><span id="calcBaseBalance">0</span> 元</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>預估全年總利息 (年息)：</span>
+                <strong class="text-purple"><span id="calcAnnualInterest">0</span> 元/年</strong>
+              </div>
+              <hr style="border: none; border-top: 1px dashed #bbf7d0; margin: 6px 0;">
+              <div style="display: flex; justify-content: space-between; font-size: 1.05rem;">
+                <span><strong>本期應發放利息：</strong></span>
+                <strong class="text-green"><span id="calcInterestAmount">0</span> 元</strong>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-primary btn-block" id="btnPayInterest">
+              <i class="fa-solid fa-gift"></i> 一鍵發放本期利息 (自動存入存摺)
+            </button>
+          </div>
+        </div>
+
+        <!-- 2.3 Canva 封面與存摺個人化設定 -->
+        <div class="admin-tab-pane" id="adminPanePassbookSettings">
+          <form id="formPassbookSettings" class="app-form">
+            
+            <div class="form-group">
+              <label><strong>🎨 存摺封面自訂 (支援孩子在 Canva 畫好的設計圖)</strong></label>
+              <div class="cover-uploader-block">
+                <div class="cover-preview-mini" id="settingsCoverPreview">
+                  <span>封面預覽</span>
+                </div>
+                <div class="uploader-controls">
+                  <p class="text-sm">請將孩子在 Canva 下載的 <code>PNG / JPG</code> 圖片上傳：</p>
+                  <input type="file" id="coverFileInput" accept="image/*" class="form-control-file">
+                  <div class="or-divider"><span>或輸入圖片網址</span></div>
+                  <input type="url" id="coverUrlInput" class="form-control" placeholder="https://example.com/cover.png">
+                  <button type="button" class="btn btn-outline btn-sm" id="btnResetCover">恢復預設封面</button>
+                </div>
+              </div>
+            </div>
+
+            <hr class="form-hr">
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="settingChildName">存摺戶名 (孩子姓名/暱稱)</label>
+                <input type="text" id="settingChildName" class="form-control" value="小寶貝">
+              </div>
+
+              <div class="form-group">
+                <label for="settingAccountNumber">專屬帳號 (例如學號或生日)</label>
+                <input type="text" id="settingAccountNumber" class="form-control" value="SAV-2026-8888">
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="settingPassbookTitle">存摺名稱標題</label>
+                <input type="text" id="settingPassbookTitle" class="form-control" value="寶貝的專屬電子存摺">
+              </div>
+
+              <div class="form-group">
+                <label for="settingCurrency">幣別代號</label>
+                <input type="text" id="settingCurrency" class="form-control" value="NT$">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="settingParentPin">修改家長管理 PIN 碼 (4 位數字)</label>
+              <input type="password" id="settingParentPin" class="form-control" maxlength="4" placeholder="預設 1234">
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-block">
+                <i class="fa-solid fa-floppy-disk"></i> 儲存存摺設定
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- 2.4 Firebase 雲端資料庫設定 -->
+        <div class="admin-tab-pane" id="adminPaneFirebaseSettings">
+          <div class="firebase-guide-box">
+            <h4><i class="fa-brands fa-google"></i> Google Firebase 雲端資料庫串接</h4>
+            <p class="text-muted">只需設定一次，資料就會永久儲存在您的 Google 雲端，孩子隨時可在手機即時查看！</p>
+            
+            <div class="firebase-status-banner" id="firebaseConfigStatus">
+              <i class="fa-solid fa-circle-info"></i> 目前狀態：<span id="firebaseStatusLabel">使用本地模式 (未串接 Firebase)</span>
+            </div>
+
+            <div class="form-group" style="margin-top: 15px;">
+              <label for="firebaseConfigJson"><strong>貼上您的 Firebase Config 設定代碼：</strong></label>
+              <textarea id="firebaseConfigJson" class="form-control code-textarea" rows="7" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "projectId": "your-project-id",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+              <small class="form-hint">
+                💡 <strong>如何取得？</strong> 請至 <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase 控制台</a> 建立專案 ➔ 新增 Web 應用程式 ➔ 複製 <code>firebaseConfig</code> 貼在上方即可。
+              </small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" id="btnSaveFirebaseConfig">
+                <i class="fa-solid fa-plug"></i> 測試並連接 Firebase
+              </button>
+              <button type="button" class="btn btn-outline" id="btnDisconnectFirebase">
+                中斷連線 (改回本地模式)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2.5 資料備份與安全性 -->
+        <div class="admin-tab-pane" id="adminPaneBackup">
+          <div class="backup-box">
+            <h4><i class="fa-solid fa-cloud-arrow-down"></i> 資料永久備份（永不丟失雙重保險）</h4>
+            <p class="text-muted">您可以隨時下載存摺所有交易與願望清單備份，即使換電腦或更換瀏覽器也能 1 秒復原！</p>
+
+            <div class="backup-actions-grid">
+              <div class="backup-action-card">
+                <i class="fa-solid fa-file-export icon-lg text-green"></i>
+                <h5>匯出 JSON 備份檔案</h5>
+                <p>將目前的所有存款明細、設定與願望下載保存到電腦中。</p>
+                <button type="button" class="btn btn-outline btn-block" id="btnExportJson">
+                  <i class="fa-solid fa-download"></i> 立即下載備份檔
+                </button>
+              </div>
+
+              <div class="backup-action-card">
+                <i class="fa-solid fa-file-import icon-lg text-blue"></i>
+                <h5>匯入復原備份檔案</h5>
+                <p>從先前的 JSON 備份檔案還原所有存摺資料。</p>
+                <input type="file" id="importJsonInput" accept=".json" style="display: none;">
+                <button type="button" class="btn btn-outline btn-block" id="btnTriggerImportJson">
+                  <i class="fa-solid fa-upload"></i> 選擇檔案並還原
+                </button>
+              </div>
+            </div>
+
+            <hr class="form-hr">
+
+            <div class="danger-zone">
+              <h5 class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> 危險區域</h5>
+              <p class="text-sm">重置所有存摺交易紀錄（此操作無法復原，請先備份！）：</p>
+              <button type="button" class="btn btn-danger btn-sm" id="btnResetAllData">
+                <i class="fa-solid fa-trash-can"></i> 清除所有交易與願望
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 新增願望目標彈窗 -->
+  <div class="modal-overlay" id="goalModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-bullseye"></i> 設定新的儲蓄願望</h3>
+        <button class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formAddGoal" class="app-form">
+          <div class="form-group">
+            <label for="goalTitle">願望名稱 <span class="req">*</span></label>
+            <input type="text" id="goalTitle" class="form-control" placeholder="例如：樂高城堡、冒險漫畫全套、角落生物玩偶" required>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="goalTargetAmount">目標金額 (NT$) <span class="req">*</span></label>
+              <input type="number" id="goalTargetAmount" class="form-control" min="1" placeholder="例如：1200" required>
+            </div>
+
+            <div class="form-group">
+              <label for="goalIcon">代表圖示</label>
+              <select id="goalIcon" class="form-control">
+                <option value="🧸">🧸 玩具玩偶</option>
+                <option value="🎮">🎮 電玩遊戲</option>
+                <option value="📚">📚 課外圖書</option>
+                <option value="🚲">🚲 腳踏車/運動</option>
+                <option value="🎨">🎨 畫具文具</option>
+                <option value="🎪">🎪 遊樂園門票</option>
+                <option value="⭐">⭐ 其他夢想</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="goalNote">激勵小語 / 願望說明</label>
+            <input type="text" id="goalNote" class="form-control" placeholder="例如：等存到了我要買來跟妹妹一起玩！">
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> 建立願望存錢筒
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 明細編輯 / 刪除彈窗 (家長管理時可對單筆明細操作) -->
+  <div class="modal-overlay" id="editTxnModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-pen"></i> 管理此筆交易</h3>
+        <button class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="editTxnInfoText" class="text-muted"></p>
+        <div class="form-actions" style="margin-top: 20px;">
+          <button type="button" class="btn btn-danger btn-block" id="btnDeleteTxn">
+            <i class="fa-solid fa-trash-can"></i> 刪除此筆交易
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 慶祝特效 Canvas (撒花與金幣) -->
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+  <!-- 底部版權 -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p>🌱 家庭成長電子存摺 | 用滿滿的愛陪伴孩子養成富足好習慣</p>
+      <p class="footer-copy">支援 Google Firebase 即時同步 & GitHub Pages 免費託管</p>
+    </div>
+  </footer>
+
+  <!-- 腳本引入 -->
+  <script src="js/confetti.js"></script>
+  <script src="js/firebase-service.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
