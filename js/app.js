@@ -499,6 +499,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ==================== 記帳送出 (支援指定孩子) ====================
   DOM.formAddTransaction.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = DOM.formAddTransaction.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
     const accountId = (DOM.txnChildSelect && DOM.txnChildSelect.value) ? DOM.txnChildSelect.value : (AppState.currentAccountId || AppState.accounts[0]?.id || 'child_default');
     const type = DOM.txnType.value || 'deposit';
     const amount = parseFloat(DOM.txnAmount.value);
@@ -508,6 +511,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!amount || isNaN(amount) || amount <= 0) {
       alert("請輸入大於 0 的正確金額！");
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
@@ -523,10 +527,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const savedTxn = await FirebaseService.addTransaction(newTxn);
 
-      // 立即推入 AppState.transactions
-      const exists = AppState.transactions.some(t => t.id === savedTxn.id);
-      if (!exists) {
-        AppState.transactions.unshift(savedTxn);
+      // 若未開啟即時連線，手動推入 AppState (防止重複)
+      if (!FirebaseService.isOnline) {
+        const exists = AppState.transactions.some(t => t.id === savedTxn.id);
+        if (!exists) {
+          AppState.transactions.unshift(savedTxn);
+        }
       }
 
       DOM.txnAmount.value = '';
@@ -549,6 +555,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error("記帳存入失敗:", err);
       alert("存入失敗：" + err.message);
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 
@@ -1026,6 +1034,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   DOM.formAddGoal.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = DOM.formAddGoal.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
     const accountId = (DOM.goalChildSelect && DOM.goalChildSelect.value) ? DOM.goalChildSelect.value : (AppState.currentAccountId || AppState.accounts[0]?.id || 'child_default');
     const title = DOM.goalTitle.value.trim();
     const targetAmount = parseFloat(DOM.goalTargetAmount.value);
@@ -1034,6 +1045,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!title || !targetAmount || isNaN(targetAmount) || targetAmount <= 0) {
       alert("請填寫願望名稱與正確的目標金額！");
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
@@ -1047,7 +1059,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const savedGoal = await FirebaseService.addGoal(newGoal);
-      AppState.goals.push(savedGoal);
+
+      // 若未開啟即時連線，手動推入 AppState (防止重複)
+      if (!FirebaseService.isOnline) {
+        const exists = AppState.goals.some(g => g.id === savedGoal.id);
+        if (!exists) {
+          AppState.goals.push(savedGoal);
+        }
+      }
 
       DOM.goalTitle.value = '';
       DOM.goalTargetAmount.value = '';
@@ -1068,6 +1087,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
       console.error("建立願望失敗:", err);
       alert("建立願望失敗：" + err.message);
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 

@@ -29,14 +29,7 @@ const DEFAULT_ACCOUNT = {
  * 如果您希望所有小孩的手機/平板「打開網址就自動連線雲端，不用每台手動貼設定」：
  * 請將 Firebase 控制台複製的 firebaseConfig 貼在下方 EMBEDDED_FIREBASE_CONFIG 中！
  */
-const EMBEDDED_FIREBASE_CONFIG = const EMBEDDED_FIREBASE_CONFIG = {
-  apiKey: "AIzaSy...",
-  authDomain: "kids-savings-passbook.firebaseapp.com",
-  projectId: "kids-savings-passbook",
-  storageBucket: "kids-savings-passbook.appspot.com",
-  messagingSenderId: "...",
-  appId: "..."
-};;
+const EMBEDDED_FIREBASE_CONFIG = null;
 
 const FirebaseService = {
   db: null,
@@ -269,10 +262,13 @@ const FirebaseService = {
       this.unsubscribeTxns = this.db.collection('transactions')
         .orderBy('date', 'desc')
         .onSnapshot((snapshot) => {
-          const txns = [];
+          const txnsMap = new Map();
           snapshot.forEach((doc) => {
-            txns.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            const realId = doc.id;
+            txnsMap.set(realId, { ...data, id: realId });
           });
+          const txns = Array.from(txnsMap.values());
           localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(txns));
           callback(txns);
         }, (err) => {
@@ -290,21 +286,21 @@ const FirebaseService = {
   },
 
   async addTransaction(txn) {
+    const txnId = txn.id || 'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
     const newTxn = {
       ...txn,
-      id: txn.id || 'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: txnId,
       createdAt: new Date().toISOString()
     };
 
-    // 優先寫入本地快取
-    const local = this.getLocalTransactions();
+    // 優先寫入本地快取 (防止重複 ID)
+    const local = this.getLocalTransactions().filter(t => t.id !== txnId);
     local.unshift(newTxn);
     localStorage.setItem(DB_KEYS.LOCAL_TXNS, JSON.stringify(local));
 
     if (this.isOnline && this.db) {
       try {
-        const docRef = await this.db.collection('transactions').add(newTxn);
-        newTxn.id = docRef.id;
+        await this.db.collection('transactions').doc(txnId).set(newTxn);
       } catch (e) {
         console.error("雲端存入交易失敗，已保留本地備份:", e);
       }
@@ -331,10 +327,13 @@ const FirebaseService = {
       if (this.unsubscribeGoals) this.unsubscribeGoals();
       this.unsubscribeGoals = this.db.collection('goals')
         .onSnapshot((snapshot) => {
-          const goals = [];
+          const goalsMap = new Map();
           snapshot.forEach((doc) => {
-            goals.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            const realId = doc.id;
+            goalsMap.set(realId, { ...data, id: realId });
           });
+          const goals = Array.from(goalsMap.values());
           localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(goals));
           callback(goals);
         }, (err) => {
@@ -352,22 +351,22 @@ const FirebaseService = {
   },
 
   async addGoal(goal) {
+    const goalId = goal.id || 'goal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
     const newGoal = {
       ...goal,
-      id: goal.id || 'goal_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: goalId,
       completed: false,
       createdAt: new Date().toISOString()
     };
 
-    // 優先寫入本地快取
-    const local = this.getLocalGoals();
+    // 優先寫入本地快取 (防止重複 ID)
+    const local = this.getLocalGoals().filter(g => g.id !== goalId);
     local.push(newGoal);
     localStorage.setItem(DB_KEYS.LOCAL_GOALS, JSON.stringify(local));
 
     if (this.isOnline && this.db) {
       try {
-        const docRef = await this.db.collection('goals').add(newGoal);
-        newGoal.id = docRef.id;
+        await this.db.collection('goals').doc(goalId).set(newGoal);
       } catch (e) {
         console.error("雲端新增願望失敗，已保留本地備份:", e);
       }
