@@ -174,22 +174,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // 檢查是否為個別孩子專屬網址 (?child=...)
+  const urlParams = new URLSearchParams(window.location.search);
+  const childQuery = urlParams.get('child');
+  const isChildExclusiveMode = !!childQuery;
+
+  function applyChildExclusiveModeUI() {
+    const switcher = document.querySelector('.child-switcher-container');
+    if (isChildExclusiveMode) {
+      // 1. 隱藏頂部孩子切換列（不讓孩子點別人的存摺）
+      if (switcher) switcher.style.display = 'none';
+
+      // 2. 隱藏頂部顯眼的「家長記帳與管理」按鈕
+      if (DOM.btnParentAdmin) DOM.btnParentAdmin.style.display = 'none';
+
+      // 3. 隱藏存摺封面上的「+ 家長存入 / 獎勵」按鈕
+      if (DOM.btnQuickAddDeposit) DOM.btnQuickAddDeposit.style.display = 'none';
+
+      // 4. 隱藏願望表單裡選擇孩子的下拉選單
+      if (DOM.goalChildSelect && DOM.goalChildSelect.parentElement) {
+        DOM.goalChildSelect.parentElement.style.display = 'none';
+      }
+    } else {
+      // 家長完整模式
+      if (switcher) switcher.style.display = 'block';
+      if (DOM.btnParentAdmin) DOM.btnParentAdmin.style.display = 'inline-flex';
+      if (DOM.btnQuickAddDeposit) DOM.btnQuickAddDeposit.style.display = 'inline-flex';
+      if (DOM.goalChildSelect && DOM.goalChildSelect.parentElement) {
+        DOM.goalChildSelect.parentElement.style.display = 'block';
+      }
+    }
+  }
+
+  // 頁腳秘密家長解鎖按鈕
+  const btnChildModeUnlockAdmin = document.getElementById('btnChildModeUnlockAdmin');
+  if (btnChildModeUnlockAdmin) {
+    btnChildModeUnlockAdmin.addEventListener('click', (e) => {
+      e.preventDefault();
+      openPinModal();
+    });
+  }
+
   // 2. 監聽帳戶列表 (Accounts)
   FirebaseService.subscribeAccounts((accounts) => {
     AppState.accounts = accounts;
     
-    // 若尚未指定當前帳戶，從網址參數 ?child=... 或預設第一個帳戶載入
-    if (!AppState.currentAccountId && accounts.length > 0) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const targetParam = urlParams.get('child');
-      
-      let matched = null;
-      if (targetParam) {
-        matched = accounts.find(a => a.id === targetParam || a.accountNumber === targetParam || a.childName === targetParam);
+    // 若為孩童專屬網址 ?child=...，嚴格匹配並鎖定該孩子
+    if (childQuery) {
+      const matched = accounts.find(a => 
+        a.accountNumber === childQuery || 
+        a.id === childQuery || 
+        a.childName === childQuery
+      );
+      if (matched) {
+        AppState.currentAccountId = matched.id;
+      } else if (accounts.length > 0) {
+        AppState.currentAccountId = accounts[0].id;
       }
-      AppState.currentAccountId = matched ? matched.id : accounts[0].id;
+    } else if (!AppState.currentAccountId && accounts.length > 0) {
+      AppState.currentAccountId = accounts[0].id;
     }
 
+    applyChildExclusiveModeUI();
     renderChildPills();
     updateChildDropdowns();
     renderCurrentAccountUI();
