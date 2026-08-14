@@ -557,10 +557,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!DOM.childrenCardsList) return;
 
     const baseUrl = window.location.origin + window.location.pathname;
+    const currentCfg = localStorage.getItem(DB_KEYS.FIREBASE_CONFIG);
+    let cfgParam = '';
+    if (currentCfg) {
+      try {
+        const b64 = btoa(encodeURIComponent(currentCfg));
+        cfgParam = `&cfg=${b64}`;
+      } catch (e) {}
+    }
 
     DOM.childrenCardsList.innerHTML = AppState.accounts.map(acc => {
       const balance = calculateAccountBalance(acc.id);
-      const directUrl = `${baseUrl}?child=${encodeURIComponent(acc.accountNumber || acc.id)}`;
+      const cleanDirectUrl = `${baseUrl}?child=${encodeURIComponent(acc.accountNumber || acc.id)}`;
+      const magicDirectUrl = `${cleanDirectUrl}${cfgParam}`;
       const isActive = acc.id === AppState.currentAccountId;
 
       return `
@@ -579,9 +588,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
 
           <div class="child-direct-link-box">
-            <span class="child-direct-link-text" title="${directUrl}">專屬網址: ?child=${acc.accountNumber}</span>
-            <button type="button" class="btn btn-outline btn-sm btn-copy-direct-url" data-url="${directUrl}">
-              <i class="fa-solid fa-copy"></i> 複製
+            <span class="child-direct-link-text" title="${cleanDirectUrl}">專屬網址: ?child=${acc.accountNumber}</span>
+            <button type="button" class="btn btn-primary btn-sm btn-copy-direct-url" data-url="${magicDirectUrl}" title="複製免設定平板專屬網址">
+              <i class="fa-solid fa-copy"></i> 複製平板免設定網址
             </button>
           </div>
 
@@ -607,7 +616,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         navigator.clipboard.writeText(btn.dataset.url).then(() => {
-          alert("📋 孩子的專屬查帳網址已複製！\n可直接貼在孩子的平板或手機瀏覽器中開啟。");
+          alert("📋 孩子的【平板免設定專屬網址】已複製！\n\n只要在孩子的平板或手機開啟此網址一次，系統就會自動連線到 Google 雲端資料庫並同步所有最新存款紀錄！");
         });
       });
     });

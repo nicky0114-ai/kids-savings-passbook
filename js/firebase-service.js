@@ -24,6 +24,20 @@ const DEFAULT_ACCOUNT = {
   annualInterestRate: 5
 };
 
+/**
+ * 💡【全家裝置免設定：內建 Firebase 設定】
+ * 如果您希望所有小孩的手機/平板「打開網址就自動連線雲端，不用每台手動貼設定」：
+ * 請將 Firebase 控制台複製的 firebaseConfig 貼在下方 EMBEDDED_FIREBASE_CONFIG 中！
+ */
+const EMBEDDED_FIREBASE_CONFIG = const EMBEDDED_FIREBASE_CONFIG = {
+  apiKey: "AIzaSy...",
+  authDomain: "kids-savings-passbook.firebaseapp.com",
+  projectId: "kids-savings-passbook",
+  storageBucket: "kids-savings-passbook.appspot.com",
+  messagingSenderId: "...",
+  appId: "..."
+};;
+
 const FirebaseService = {
   db: null,
   isOnline: false,
@@ -33,15 +47,52 @@ const FirebaseService = {
 
   // 初始化連線
   async init(onStateChange) {
-    const savedConfigStr = localStorage.getItem(DB_KEYS.FIREBASE_CONFIG);
-    if (!savedConfigStr) {
+    // 1. 檢查網址是否有自帶加密設定參數 ?cfg=... 或 #cfg=... (平板點擊專屬連結時自動儲存)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      let urlCfg = urlParams.get('cfg');
+      if (!urlCfg && hash.includes('cfg=')) {
+        const match = hash.match(/cfg=([^&]+)/);
+        if (match) urlCfg = match[1];
+      }
+
+      if (urlCfg) {
+        const decoded = decodeURIComponent(atob(urlCfg));
+        const parsed = JSON.parse(decoded);
+        if (parsed && parsed.apiKey && parsed.projectId) {
+          localStorage.setItem(DB_KEYS.FIREBASE_CONFIG, JSON.stringify(parsed));
+          console.log("✅ 已透過專屬連結自動完成 Firebase 雲端設定！");
+          // 保持網址乾淨，清除 cfg 參數但保留 child 參數
+          const childParam = urlParams.get('child');
+          const cleanUrl = window.location.origin + window.location.pathname + (childParam ? `?child=${encodeURIComponent(childParam)}` : '');
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      }
+    } catch (e) {
+      console.warn("無法解析網址中的 Firebase 設定參數:", e);
+    }
+
+    // 2. 決定使用的 Firebase Config（優先順序：內嵌設定 > 瀏覽器 LocalStorage）
+    let config = null;
+    if (typeof EMBEDDED_FIREBASE_CONFIG !== 'undefined' && EMBEDDED_FIREBASE_CONFIG && EMBEDDED_FIREBASE_CONFIG.apiKey) {
+      config = EMBEDDED_FIREBASE_CONFIG;
+    } else {
+      const savedConfigStr = localStorage.getItem(DB_KEYS.FIREBASE_CONFIG);
+      if (savedConfigStr) {
+        try {
+          config = JSON.parse(savedConfigStr);
+        } catch (e) {}
+      }
+    }
+
+    if (!config) {
       this.isOnline = false;
       if (onStateChange) onStateChange(false, '本地模式 (未串接 Firebase)');
       return false;
     }
 
     try {
-      const config = JSON.parse(savedConfigStr);
       if (!firebase.apps.length) {
         firebase.initializeApp(config);
       }
